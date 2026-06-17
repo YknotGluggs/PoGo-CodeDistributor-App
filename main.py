@@ -1,6 +1,6 @@
 from kivy.config import Config
-#Config.set('graphics', 'width', '324')
-#Config.set('graphics', 'height', '723')
+Config.set('graphics', 'width', '324')
+Config.set('graphics', 'height', '723')
 from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.uix.behaviors import ButtonBehavior
@@ -9,7 +9,7 @@ from kivy.uix.image import Image
 from kivy.graphics import Color, Ellipse, Rectangle
 from kivy.storage.jsonstore import JsonStore
 from kivy.uix.label import Label
-from kivy.uix.button import Button
+from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
 from kivy.clock import Clock
 from kivy.graphics.texture import Texture
@@ -87,7 +87,37 @@ class QRButton(ButtonBehavior, FloatLayout):
             self.y + (self.height - self.image.height) / 2
         )
 
+class SubmitButton(ButtonBehavior, FloatLayout):
+    def __init__(self, image_source="", **kwargs):
+        super().__init__(**kwargs)
+
+        self.size_hint = (0.1,0.1)
+        with self.canvas.before:
+            Color(0.5, 0.5, 0.5, 1)
+            self.rectangle = Rectangle(pos=self.pos, size=self.size)
         
+        self.label = Label(
+            text = "Submit Codes",
+            size_hint = (1,1),
+            color=(1, 1, 1, 1),
+            font_size=24
+        )
+        self.add_widget(self.label)
+        self.bind(pos=self.update_graphics,
+                  size=self.update_graphics)
+    
+    def update_graphics(self, *args):
+        self.rectangle.pos = self.pos
+        self.rectangle.size = self.size
+        self.label.size = self.size
+        self.label.pos = self.pos
+
+
+class UploadMenu(FloatLayout):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.size_hint = (1,1)
+        self.text = ""
 
 class CodesMenu(FloatLayout):
     def __init__(self, **kwargs):
@@ -109,9 +139,33 @@ class CodesMenu(FloatLayout):
         self.textinput.bind(text=on_text)
         self.textinput.bind(focus=on_focus)
 
-        self.add_widget(self.textinput)
+        self.submit_button = SubmitButton()
+        self.submit_button.center_x = self.center_x
+        self.submit_button.y = self.textinput.y-self.submit_button.height
+        self.submit_button.bind(on_press=self.submitCodes)
 
-        
+        self.add_widget(self.textinput)
+        self.add_widget(self.submit_button)
+
+        self.bind(pos=self.update_graphics,
+                  size=self.update_graphics)
+
+    def submitCodes(self,instance):
+        parsed_text = self.text.split(", ")
+        for x in parsed_text:
+            for y in codes:
+                if x in y:
+                    break
+            else:
+                codes.append([x,0])
+    
+    def update_graphics(self, *args):
+        self.size_hint = (1,1)
+        self.textinput.size_hint=(0.9,0.5)
+        self.textinput.pos_hint = {"x":0.05, "y":0.25}
+        self.submit_button.size_hint = (0.7, 0.08)
+        self.submit_button.pos_hint = {"center_x": 0.5, "y": 0.15}
+
 
         
 
@@ -289,10 +343,10 @@ class overall_layout(FloatLayout):
         upload_button.bind(on_press=self.upload)
 
         if state == 0:
-            self.add_widget(HomeMenu())
+            self.add_widget(HomeMenu(size=self.image.size))
             home_button.image.color = (0.5,0.5,0.5,1)
         elif state == 1:
-            self.add_widget(CodesMenu())
+            self.add_widget(CodesMenu(size=self.image.size))
             codes_button.image.color = (0.5,0.5,0.5,1)
         elif state == 2:
             upload_button.image.color = (0.5,0.5,0.5,1)
