@@ -1,12 +1,12 @@
+from kivy.config import Config
+Config.set('graphics', 'width', '324')
+Config.set('graphics', 'height', '723')
 from kivy.app import App
 from kivy.uix.widget import Widget
-from kivy.properties import NumericProperty, ReferenceListProperty
-from kivy.vector import Vector
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image
 from kivy.graphics import Color, Ellipse, Rectangle
-from kivy.uix.boxlayout import BoxLayout
 from kivy.storage.jsonstore import JsonStore
 from kivy.uix.label import Label
 from kivy.uix.button import Button
@@ -26,18 +26,19 @@ class CircleButton(ButtonBehavior, Widget):
         super().__init__(**kwargs)
 
         self.size_hint = (None, None)
-        self.size = (120, 120)
-
-        # Draw circle
-        with self.canvas.before:
-            Color(1, 1, 1, 1)
-            self.circle = Ellipse(pos=self.pos, size=self.size)
-
+        self.size = (65, 65)
         # Add image
+        with self.canvas.before:
+            Color(0.5, 0.5, 0.5, 1)
+            self.rectangle = Rectangle(pos=self.pos, size=self.size)
+            
         self.image = Image(
             source=image_source,
-            pos=self.pos,
-            size=self.size,
+            pos = (
+                self.x + (self.width * 0.15),
+                self.y + (self.height * 0.15)
+            ),
+            size_hint = (None,None),
             allow_stretch=True,
             keep_ratio=True
         )
@@ -50,147 +51,30 @@ class CircleButton(ButtonBehavior, Widget):
         self.update_graphics()
 
     def update_graphics(self, *args):
-        self.circle.pos = self.pos
-        self.circle.size = self.size
+        self.rectangle.pos = self.pos
+        self.rectangle.size = self.size
 
-        self.image.pos = self.pos
-        self.image.size = self.size
-
-
-
-class QRWidget(BoxLayout):
-
-    def __init__(self, data=[], index=None,**kwargs):
-        super().__init__(**kwargs)
-
-        self.orientation = "vertical"
-        self.spacing = 10
-
-        self.size_hint = (None, None)
-        self.size = (300, 350)
-        self.index = index
-
-        # QR image
-        self.qr_image = Image(
-            size_hint=(1, 0.85)
+        
+        self.image.size = (self.size[0]*0.7, self.size[1]*0.7)
+        self.image.pos = (
+            self.x + (self.width * 0.15),
+            self.y + (self.height * 0.15)
         )
 
-        # Text label
-        self.code_label = Label(
-            text=data[0],
-            size_hint=(1, 0.15),
-            color=(1, 1, 1, 1),
-            font_size=20
-        )
-        status = "Avaliable"
-        if data[1] == 0:
-            status = "Redeemed"
-
-        self.status_Button = Button(
-            text=status,
-            size_hint=(1, 0.10),
-            color=(1, 1, 1, 1),
-            font_size=20
-        )
-        self.status_Button.bind(on_press=lambda instance: self.chage_status(self.index))
-
-
-        self.add_widget(self.qr_image)
-        self.add_widget(self.code_label)
-        self.add_widget(self.status_Button)
-
-        self.update_qr(data)
-
-    def update_qr(self, data):
-
-        # Update label text
-        self.code_label.text = data[0]
-        self.status_Button.text = "Avaliable" if data[1] == 0 else "Redeemed"
-
-        # Generate QR
-        qr = qrcode.make(f"https://store.pokemongo.com/offer-redemption?passcode={data[0]}")
-        qr = qr.convert("RGBA")
-
-        texture = Texture.create(
-            size=qr.size,
-            colorfmt="rgba"
-        )
-
-        texture.blit_buffer(
-            qr.tobytes(),
-            colorfmt="rgba",
-            bufferfmt="ubyte"
-        )
-
-        texture.flip_vertical()
-
-        self.qr_image.texture = texture
-    
-    def chage_status(self, index):
-        codes[index][1] = (codes[index][1] + 1) % 2
-        self.status_Button.text = "Avaliable" if codes[index][1] == 0 else "Redeemed"
-
-class Code_layout(BoxLayout):
-    velocity_x = NumericProperty(0)
-    velocity_y = NumericProperty(0)
-    velocity = ReferenceListProperty(velocity_x, velocity_y)
-
-    def move(self):
-        self.pos = Vector(*self.velocity) + self.pos
-    
-
-class Distribution(FloatLayout):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.index = 0
-
-        code_layout = Code_layout()
-        self.qr_widget = QRWidget(codes[self.index], index=self.index)
-        self.qr_widget.pos_hint = {
-            "center_x": 0.5,
-            "center_y": 0.5
-        }
-
-
-        next_button = CircleButton()
-        next_button.pos_hint = {"right": 1, "center_y": 0.5}
-        next_button.bind(on_press=self.next_qr)
-
-        back_button = CircleButton()
-        back_button.pos_hint = {"x": 0, "center_y": 0.5}
-        back_button.bind(on_press=self.prev_qr)
-
-
-        self.add_widget(self.qr_widget)
-        self.add_widget(next_button)
-        self.add_widget(back_button)
-
-    def next_qr(self, instance):
-        self.index = (self.index + 1) % len(codes)
-
-        self.qr_widget.update_qr(codes[self.index])
-        self.qr_widget.index = self.index
-
-    def prev_qr(self, instance):
-        self.index = (self.index - 1) % len(codes)
-
-        self.qr_widget.update_qr(codes[self.index])
-        self.qr_widget.index = self.index
-
-class Menubutton(ButtonBehavior, Widget):
+class QRButton(ButtonBehavior, FloatLayout):
     def __init__(self, image_source="", **kwargs):
         super().__init__(**kwargs)
+
         self.size_hint = (None, None)
-        self.size = (100, 50)
-        
+        self.size = (250, 250)
+
         with self.canvas.before:
-            Color(1, 1, 1, 1)
+            Color(0.5,0.5,0.5,1)
             self.rectangle = Rectangle(pos=self.pos, size=self.size)
 
-        # Add image
         self.image = Image(
             source=image_source,
-            pos=self.pos,
+            size_hint=(None, None),
             size=self.size,
             allow_stretch=True,
             keep_ratio=True
@@ -207,35 +91,226 @@ class Menubutton(ButtonBehavior, Widget):
         self.rectangle.pos = self.pos
         self.rectangle.size = self.size
 
-        self.image.pos = self.pos
-        self.image.size = self.size
+        self.image.pos = (
+            self.x + (self.width - self.image.width) / 2,
+            self.y + (self.height - self.image.height) / 2
+        )
+    
+    def set_image_scale(self, scale):
+        self.image.size = (
+            self.width * scale,
+            self.height * scale
+        )
+        self.image.pos = (
+            self.x + (self.width - self.image.width) / 2,
+            self.y + (self.height - self.image.height) / 2
+        )
 
+class QRWidget(FloatLayout):
+
+    def __init__(self, data=[], index=0,**kwargs):
+        super().__init__(**kwargs)
+
+        self.orientation = "vertical"
+        self.spacing = 10
+        self.index = index
+
+        # QR image
+        self.qr_image = QRButton()
+        self.qr_image.size_hint = (None, None)
+        self.qr_image.size = (380, 380) # MAKE THIS DYNAMIC TO WINDOW SIZE
+        self.qr_image.pos_hint = {
+            "center_x": 0.5,
+            "center_y": 0.6
+        }
+        # Text label
+        self.code_label = Label(
+            text=data[0],
+            size_hint=(1, 0.10),
+            pos_hint={"x": 0, "y": 0},
+            color=(1, 1, 1, 1),
+            font_size=20
+        )
+        self.qr_image.bind(on_press=lambda instance: self.chage_status())
+
+        next_button = CircleButton(image_source="Images/icon_right_arrow.png")
+        next_button.pos_hint = {"right": 1, "y": 0}
+        next_button.bind(on_press=self.next_qr)
+
+        back_button = CircleButton(image_source="Images/icon_left_arrow.png")
+        back_button.pos_hint = {"x": 0, "y": 0}
+        back_button.bind(on_press=self.prev_qr)
+
+        self.add_widget(self.qr_image)
+        self.add_widget(self.code_label)
+        self.add_widget(next_button)
+        self.add_widget(back_button)
+
+        self.update_qr(data)
+
+    def next_qr(self, instance):
+        self.index = (self.index + 1) % len(codes)
+        self.update_qr(codes[self.index])
+        
+
+    def prev_qr(self, instance):
+        self.index = (self.index - 1) % len(codes)
+        self.update_qr(codes[self.index])
+
+    def update_qr(self, data):
+        # Update label text
+        self.code_label.text = data[0]
+        if data[1]:
+            self.qr_image.set_image_scale(0.90)
+        else:
+            self.qr_image.set_image_scale(1.0)
+        self.qr_image.pos_hint = {"center_x": 0.5, "center_y": 0.5}
+
+
+        # Generate QR
+        qr = qrcode.make(f"https://store.pokemongo.com/offer-redemption?passcode={data[0]}")
+        qr = qr.convert("RGBA")
+
+        texture = Texture.create(
+            size=   qr.size,
+            colorfmt="rgba"
+        )
+
+        texture.blit_buffer(
+            qr.tobytes(),
+            colorfmt="rgba",
+            bufferfmt="ubyte"
+        )
+
+        texture.flip_vertical()
+        cropped_texture = texture.get_region(10,10,390,390)
+
+        self.qr_image.image.texture = cropped_texture
+    
+    def chage_status(self, ):
+        codes[self.index][1] = (codes[self.index][1] + 1) % 2
+        self.update_qr(codes[self.index])
+
+class 
+
+class HomeMenu(FloatLayout):
+    def __init__(self, image_source="", **kwargs):
+        super().__init__(**kwargs)
+
+        self.image = Image(
+            source=image_source,
+            size_hint=(1, 1),
+            pos_hint={"x": 0, "y": 0},
+            allow_stretch=True,
+            keep_ratio=True
+        )
+
+        self.add_widget(self.image)
+
+        self.qr_widget = QRWidget(codes[0], index=0)
+        self.qr_widget.size_hint = (None, None)
+        self.qr_widget.size = (300, 500)
+        self.qr_widget.pos_hint = {
+            "center_x": 0.5,
+            "center_y": 0.5
+        }
+
+        self.add_widget(self.qr_widget)
+
+class Menubutton(ButtonBehavior, FloatLayout):
+    def __init__(self, image_source="", **kwargs):
+        super().__init__(**kwargs)
+        self.size_hint_x = 0.34
+        self.size_hint_y = None
+        self.height = 80
+        self.rectangle = Rectangle(pos=self.pos, size=self.size)
+        '''
+        with self.canvas.before:
+            Color(0.5, 0.5, 0.5, 1)
+            
+        '''
+        # Add image
+        self.image = Image(
+            source=image_source,
+            size_hint=(1, 1),
+            pos_hint={"x": 0, "y": 0},
+            allow_stretch=True,
+            keep_ratio=True
+        )
+
+        self.add_widget(self.image)
+
+        self.bind(pos=self.update_graphics,
+                  size=self.update_graphics)
+
+        self.update_graphics()
+
+    def update_graphics(self, *args):
+        self.rectangle.pos = self.pos
+        self.rectangle.size = self.size
     
     
 
 
-class overall_layout(BoxLayout):
+class overall_layout(FloatLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.orientation = "vertical"
         self.spacing = 10
 
         if state == 0:
-            self.add_widget(Distribution())
+            self.add_widget(HomeMenu(image_source="Images/background.jpg"))
         elif state == 1:
             # Add settings widget here
             pass
+        elif state == 2:
+            pass
         
-        menu_button = Menubutton(image_source="")
-        menu_button.pos_hint = {"right": 1, "y": 0}
-        menu_button.bind(on_press=self.toggle_menu)
-        self.add_widget(menu_button)
+        home_button = Menubutton(image_source='Images/icon_home.png')
+        home_button.pos_hint = {"x": 0.33, "y": 0}
+        home_button.bind(on_press=self.home)
 
-    def toggle_menu(self, instance):
+        codes_button = Menubutton(image_source="Images/icon_codes.png")
+        codes_button.pos_hint = {"x": 0, "y": 0}
+        codes_button.bind(on_press=self.codes)
+
+        upload_button = Menubutton(image_source="Images/icon_upload.png")
+        upload_button.pos_hint = {"x": 0.66, "y": 0}
+        upload_button.bind(on_press=self.upload)
+
+
+        self.add_widget(home_button)
+        self.add_widget(codes_button) 
+        self.add_widget(upload_button)
+
+
+    def home(self, instance):
         global state
-        state = (state + 1) % 2
+        if state == 0:
+            return
+        state = 0
+        print('home')
         self.clear_widgets()
         self.__init__()
+
+    def codes(self, instance):
+        global state
+        if state == 1:
+            return
+        state = 1
+        print('codes')
+        self.clear_widgets()
+        self.__init__()
+    
+    def upload(self, instance):
+        global state
+        if state == 2:
+            return
+        state = 2
+        print('upload')
+        self.clear_widgets()
+        self.__init__()
+
 
         
 
