@@ -14,6 +14,7 @@ from kivy.graphics.texture import Texture
 import qrcode
 import json
 
+# Python 3.12.0
 #https://store.pokemongo.com/offer-redemption?passcode=68TTGWN79E7XE
 codes = []
 theme = "default"
