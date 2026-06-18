@@ -6,7 +6,7 @@ from kivy.uix.widget import Widget
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image
-from kivy.graphics import Color, Ellipse, Rectangle
+from kivy.graphics import Color, Ellipse, Rectangle, Line
 from kivy.storage.jsonstore import JsonStore
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
@@ -117,7 +117,58 @@ class UploadMenu(FloatLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.size_hint = (1,1)
-        self.text = ""
+        self.unused_codes = ""
+        self.used_codes = ""
+        for x in codes:
+            if x[1]:
+                self.used_codes += x[0] + "\n"
+            else:
+                self.unused_codes += x[0] + "\n"
+
+        with self.canvas.before:
+            Color(1,1,1,1)
+            self.usedBg = Rectangle()
+            self.unusedBg = Rectangle()
+        
+        self.usedText = ScrollView(
+            size_hint = (0.8, 0.4),
+            pos_hint = {"x":0.1, "y":0.5}
+        )
+        self.unusedText = ScrollView(
+            size_hint = (0.8, 0.4),
+            pos_hint = {"x":0.1, "y":0.1}
+        )
+        self.usedText.add_widget(Label(
+            text=self.used_codes,
+            color=(0, 0, 0, 1),
+            size_hint_y=None))
+        
+        self.unusedText.add_widget(Label(
+            text=self.unused_codes,
+            color=(0, 0, 0, 1),
+            size_hint_y=None))
+
+        self.add_widget(self.usedText)
+        self.add_widget(self.unusedText)
+
+        self.bind(pos=self.update_graphics,
+                  size=self.update_graphics)
+        Clock.schedule_once(lambda dt: self.update_graphics(), 0)
+    
+    def update_graphics(self, *args):
+        self.usedText.size_hint = (0.8, 0.4)
+        self.usedText.pos_hint = {"x": 0.1, "y": 0.55}
+
+        self.unusedText.size_hint = (0.8, 0.4)
+        self.unusedText.pos_hint = {"x": 0.1, "y": 0.1}
+
+        self.usedBg.pos = self.usedText.pos
+        self.usedBg.size = self.usedText.size
+
+        self.unusedBg.pos = self.unusedText.pos
+        self.unusedBg.size = self.unusedText.size
+
+        
 
 class CodesMenu(FloatLayout):
     def __init__(self, **kwargs):
@@ -152,12 +203,14 @@ class CodesMenu(FloatLayout):
 
     def submitCodes(self,instance):
         parsed_text = self.text.split(", ")
-        for x in parsed_text:
-            for y in codes:
-                if x in y:
-                    break
-            else:
-                codes.append([x,0])
+        print("Submitted", parsed_text)
+        if parsed_text != [""]:
+            for x in parsed_text:
+                for y in codes:
+                    if x in y:
+                        break
+                else:
+                    codes.append([x,0])
     
     def update_graphics(self, *args):
         self.size_hint = (1,1)
@@ -177,10 +230,11 @@ class HomeMenu(FloatLayout):
         self.spacing = 10
         self.index = 0
         self.data = codes[self.index]
+        self.border = None
 
         # QR image
         self.qr_image = QRButton()
-        self.qr_image.size_hint = (0.8, 0.9)
+        self.qr_image.size_hint = (0.8, 0.35)
         # Text label
         
         self.qr_image.bind(on_press=lambda instance: self.chage_status())
@@ -221,7 +275,6 @@ class HomeMenu(FloatLayout):
         self.add_widget(self.code_label)
         self.add_widget(self.next_button)
         self.add_widget(self.back_button)
-
         
         self.bind(pos=self.update_graphics,
                   size=self.update_graphics)
@@ -237,7 +290,7 @@ class HomeMenu(FloatLayout):
         self.update_qr(codes[self.index])
 
     def update_graphics(self, *args):
-        self.qr_image.size_hint = (0.8, 0.8)
+        self.qr_image.size_hint = (0.8, 0.35)
         self.qr_image.pos_hint = {"center_x": 0.5, "center_y": 0.5}
 
         self.back_button.pos_hint = {"x": 0.10, "y": 0.25}
@@ -245,6 +298,13 @@ class HomeMenu(FloatLayout):
 
         self.code_label.center_y = self.next_button.center_y
         self.code_label.center_x = self.width / 2
+        if self.border != None:
+            self.border.rectangle = (
+                    self.qr_image.image.x,
+                    self.qr_image.image.y,
+                    self.qr_image.image.width,
+                    self.qr_image.image.height
+                )
 
     def update_qr(self, data):
         # Update label text
@@ -271,6 +331,23 @@ class HomeMenu(FloatLayout):
         texture.flip_vertical()
 
         self.qr_image.image.texture = texture
+        if data[1]:
+            if self.border is None:
+                with self.canvas:
+                    Color(1, 1, 0, 1)
+                    self.border = Line(width=10)
+
+            self.border.rectangle = (
+                self.qr_image.image.x,
+                self.qr_image.image.y,
+                self.qr_image.image.width,
+                self.qr_image.image.height
+            )
+
+        else:
+            if self.border is not None:
+                self.canvas.remove(self.border)
+                self.border = None
     
     def chage_status(self, ):
         codes[self.index][1] = (codes[self.index][1] + 1) % 2
@@ -349,6 +426,7 @@ class overall_layout(FloatLayout):
             self.add_widget(CodesMenu(size=self.image.size))
             codes_button.image.color = (0.5,0.5,0.5,1)
         elif state == 2:
+            self.add_widget(UploadMenu(size=self.image.size))
             upload_button.image.color = (0.5,0.5,0.5,1)
 
 
