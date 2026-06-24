@@ -179,7 +179,7 @@ class CodesMenu(FloatLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.size_hint = (1,1)
-        self.unused_codes = "\n"
+        self.unused_codes = ""
         self.used_codes = ""
         for x in codes:
             if x[1]:
@@ -200,15 +200,33 @@ class CodesMenu(FloatLayout):
             size_hint = (0.8, 0.4),
             pos_hint = {"x":0.1, "y":0.55}
         )
-        self.usedText.add_widget(Label(
+        self.usedLabelText = Label(
             text=self.used_codes,
             color=(0, 0, 0, 1),
-            size_hint_y=None))
+            size_hint_y=None,
+            halign="left",
+            valign="top"
+        )
+
+        self.usedLabelText.bind(
+            texture_size=lambda instance, value: setattr(instance, "height", value[1])
+        )
+
+        self.usedText.add_widget(self.usedLabelText)
         
-        self.unusedText.add_widget(Label(
+        self.unusedLabelText = Label(
             text=self.unused_codes,
             color=(0, 0, 0, 1),
-            size_hint_y=None))
+            size_hint_y=None,
+            halign="left",
+            valign="top"
+        )
+
+        self.unusedLabelText.bind(
+            texture_size=lambda instance, value: setattr(instance, "height", value[1])
+        )
+
+        self.unusedText.add_widget(self.unusedLabelText)
         
         self.unusedLabel = Label(
             text="Available Codes",
@@ -221,6 +239,9 @@ class CodesMenu(FloatLayout):
             color=(1,1,1,1),
             size_hint=(0.8, 0.05)
         )
+
+        self.usedLabelText.text_size = (self.usedText.width, None)
+        self.unusedLabelText.text_size = (self.unusedText.width, None)
 
         self.trash = TrashButton()
         self.trash.x = self.unusedText.right
@@ -281,6 +302,8 @@ class CodesMenu(FloatLayout):
             self.usedText.x,
             self.usedText.top
         )
+        self.usedLabelText.text_size = (self.usedText.width, None)
+        self.unusedLabelText.text_size = (self.unusedText.width, None)
 
 
         
@@ -355,6 +378,8 @@ class UploadMenu(FloatLayout):
                         break
                 else:
                     codes.append([x,0])
+        self.text = ""
+        self.textinput.text = ""
     
     def update_graphics(self, *args):
         self.size_hint = (1,1)
@@ -382,7 +407,7 @@ class HomeMenu(FloatLayout):
 
         # QR image
         self.qr_image = QRButton()
-        self.qr_image.size_hint = (0.8, 0.35)
+        self.qr_image.size = (self.width*0.8,self.width*0.8)
 
         # Text label
         self.qr_image.bind(on_press=lambda instance: self.chage_status())
@@ -475,7 +500,7 @@ class HomeMenu(FloatLayout):
         self.update_qr(codes[self.index])
 
     def update_graphics(self, *args):
-        self.qr_image.size_hint = (0.8, 0.35)
+        self.qr_image.size = (self.width*0.8,self.width*0.8)
         self.qr_image.pos_hint = {"center_x": 0.5, "center_y": 0.6}
 
         self.back_button.pos_hint = {"x": 0.10, "y": 0.35}
@@ -588,7 +613,7 @@ class overall_layout(FloatLayout):
             size_hint=(1, 1),
             pos_hint={"x": 0, "y": 0},
             allow_stretch=True,
-            keep_ratio=True
+            keep_ratio=False
         )
         self.add_widget(self.image)
         
