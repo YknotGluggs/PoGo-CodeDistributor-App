@@ -1,6 +1,7 @@
 from kivy.config import Config
 Config.set('graphics', 'width', '324')
 Config.set('graphics', 'height', '723')
+Config.set('kivy', 'keyboard_mode', 'system')
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -289,20 +290,21 @@ class UploadMenu(FloatLayout):
         super().__init__(**kwargs)
         self.size_hint = (1,1)
         self.text = ""
-
-        def on_focus(instance, value):
-            if value:
-                print("Focused")
-                instance._keyboard = instance._ensure_keyboard()
         
         def on_text(instance, value):
-            print('The widget', instance, 'have:', value)
+            #print('The widget', instance, 'have:', value)
             self.text = value
             
-        self.textinput = TextInput(focus=True, size_hint=(0.9, 0.5), padding=[10, 10, 10, 10], font_size=24)
-        self.textinput.pos_hint = {"x":0.05, "y":0.25}
+        self.textinput = TextInput(
+            size_hint=(0.9, 0.5),
+            pos_hint={"x": 0.05, "y": 0.25},
+            padding=[10, 10, 10, 10],
+            font_size=24,
+            multiline=True,
+            input_type="text"
+        )
+
         self.textinput.bind(text=on_text)
-        self.textinput.bind(focus=on_focus)
 
         self.submit_button = SubmitButton()
         self.submit_button.center_x = self.center_x
@@ -606,10 +608,10 @@ class overall_layout(FloatLayout):
             self.add_widget(HomeMenu(size=self.image.size))
             home_button.image.color = (0.5,0.5,0.5,1)
         elif state == 1:
-            self.add_widget(UploadMenu(size=self.image.size))
+            self.add_widget(CodesMenu(size=self.image.size))
             codes_button.image.color = (0.5,0.5,0.5,1)
         elif state == 2:
-            self.add_widget(CodesMenu(size=self.image.size))
+            self.add_widget(UploadMenu(size=self.image.size))
             upload_button.image.color = (0.5,0.5,0.5,1)
 
 
