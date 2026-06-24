@@ -7,8 +7,7 @@ from kivy.uix.button import Button
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image
-from kivy.graphics import Color, Ellipse, Rectangle, Line
-from kivy.storage.jsonstore import JsonStore
+from kivy.graphics import Color, Rectangle, Line
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
@@ -17,6 +16,7 @@ from kivy.clock import Clock
 from kivy.graphics.texture import Texture
 import qrcode
 import json
+import os
 
 # Python 3.12.0
 #https://store.pokemongo.com/offer-redemption?passcode=68TTGWN79E7XE
@@ -250,6 +250,8 @@ class CodesMenu(FloatLayout):
                 del codes[i]
             else:
                 i += 1
+        if len(codes) == 0:
+            codes.append(["INPUT CODES FIRST", 1])
         self.clear_widgets()
         self.__init__()
     
@@ -658,13 +660,29 @@ class overall_layout(FloatLayout):
 class DistributorApp(App):
     def build(self):
         global codes, theme
-        data = JsonStore('data.json')
-        if data.exists('theme'):
-            theme = data.get('theme')
-            # Load theme settings if needed
-        if data.exists('codes'):
-            codes = data.get('codes')
-            # Load codes if needed
+        
+        if not os.path.exists("data.json"):
+            data = {
+            "theme": "default",
+            "codes": [["INPUT CODES FIRST", 1]]
+            }
+            with open("data.json", "w") as f:
+                json.dump(data, f)
+
+        with open("data.json", "r") as f:
+            data = json.load(f)
+
+        with open("data.json", "r") as f:
+            data = json.load(f)
+
+        if "theme" not in data:
+            data["theme"] = "default"
+
+        if "codes" not in data:
+            data["codes"] = [["CODES DID NOT LOAD", 1]]
+
+        theme = data["theme"]
+        codes = data["codes"]
         return overall_layout()
 
     def on_stop(self):
