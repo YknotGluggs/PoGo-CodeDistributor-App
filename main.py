@@ -2,7 +2,8 @@ from kivy.config import Config
 Config.set('graphics', 'width', '324')
 Config.set('graphics', 'height', '723')
 from kivy.app import App
-from kivy.uix.widget import Widget
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image
@@ -11,6 +12,7 @@ from kivy.storage.jsonstore import JsonStore
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
+from kivy.uix.popup import Popup
 from kivy.clock import Clock
 from kivy.graphics.texture import Texture
 import qrcode
@@ -21,6 +23,39 @@ import json
 codes = []
 theme = "default"
 state = 0
+
+class ConfirmationPopup(Popup):
+    def __init__(self, on_confirm_callback, **kwargs):
+        super().__init__(**kwargs)
+        self.title = "Please Confirm"
+        self.size_hint = (0.6, 0.4)
+        self.auto_dismiss = False # Force user to click an option
+        
+        # Layout for popup elements
+        content = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        content.add_widget(Label(text="Delete all used codes?"))
+        
+        # Button container
+        btn_layout = BoxLayout(orientation='horizontal', spacing=10)
+        
+        # Yes Button
+        btn_yes = Button(text="Yes")
+        btn_yes.bind(on_release=lambda x: self.handle_choice(True, on_confirm_callback))
+        
+        # No Button
+        btn_no = Button(text="No")
+        btn_no.bind(on_release=lambda x: self.handle_choice(False, None))
+        
+        btn_layout.add_widget(btn_yes)
+        btn_layout.add_widget(btn_no)
+        content.add_widget(btn_layout)
+        
+        self.content = content
+
+    def handle_choice(self, is_confirmed, callback):
+        self.dismiss()
+        if is_confirmed and callback:
+            callback()
 
 class BoxButton(ButtonBehavior, FloatLayout):
 
@@ -87,6 +122,32 @@ class QRButton(ButtonBehavior, FloatLayout):
             self.y + (self.height - self.image.height) / 2
         )
 
+class TrashButton(ButtonBehavior, FloatLayout):
+    def __init__(self, image_source="", **kwargs):
+        super().__init__(**kwargs)
+        self.size_hint = (0.1,0.05)
+        with self.canvas.before:
+            Color(0, 0, 0, 1)
+            self.rectangle = Rectangle(pos=self.pos, size=self.size)
+
+        self.image = Image(
+            source="Images/icon_delete.png",
+            size_hint=(1,1),
+            pos=(0,0)
+        )
+
+        self.add_widget(self.image)
+
+        self.bind(pos=self.update_graphics,
+          size=self.update_graphics)
+    
+    def update_graphics(self, *args):
+        self.rectangle.pos = self.pos
+        self.rectangle.size = self.size
+
+        self.image.size = self.size
+        self.image.pos = self.pos
+
 class SubmitButton(ButtonBehavior, FloatLayout):
     def __init__(self, image_source="", **kwargs):
         super().__init__(**kwargs)
@@ -113,11 +174,11 @@ class SubmitButton(ButtonBehavior, FloatLayout):
         self.label.pos = self.pos
 
 
-class UploadMenu(FloatLayout):
+class CodesMenu(FloatLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.size_hint = (1,1)
-        self.unused_codes = ""
+        self.unused_codes = "\n"
         self.used_codes = ""
         for x in codes:
             if x[1]:
@@ -132,11 +193,11 @@ class UploadMenu(FloatLayout):
         
         self.usedText = ScrollView(
             size_hint = (0.8, 0.4),
-            pos_hint = {"x":0.1, "y":0.5}
+            pos_hint = {"x":0.1, "y":0.1}
         )
         self.unusedText = ScrollView(
             size_hint = (0.8, 0.4),
-            pos_hint = {"x":0.1, "y":0.1}
+            pos_hint = {"x":0.1, "y":0.55}
         )
         self.usedText.add_widget(Label(
             text=self.used_codes,
@@ -147,20 +208,57 @@ class UploadMenu(FloatLayout):
             text=self.unused_codes,
             color=(0, 0, 0, 1),
             size_hint_y=None))
+        
+        self.unusedLabel = Label(
+            text="Available Codes",
+            color=(1,1,1,1),
+            size_hint=(0.8, 0.05)
+        )
+
+        self.usedLabel = Label(
+            text="Used Codes",
+            color=(1,1,1,1),
+            size_hint=(0.8, 0.05)
+        )
+
+        self.trash = TrashButton()
+        self.trash.x = self.unusedText.right
+        self.trash.y = self.usedText.top
+        self.trash.bind(on_press=self.summonConfirm)
+        
+        self.popup = ConfirmationPopup(on_confirm_callback=self.trashUsed)
 
         self.add_widget(self.usedText)
+        self.add_widget(self.usedLabel)
+
         self.add_widget(self.unusedText)
+        self.add_widget(self.unusedLabel)
+
+        self.add_widget(self.trash)
 
         self.bind(pos=self.update_graphics,
                   size=self.update_graphics)
         Clock.schedule_once(lambda dt: self.update_graphics(), 0)
     
+    def summonConfirm(self, *args):
+        self.popup.open()
+
+    def trashUsed(self, *args):
+        i = 0
+        while i < len(codes):
+            if codes[i][1]:
+                del codes[i]
+            else:
+                i += 1
+        self.clear_widgets()
+        self.__init__()
+    
     def update_graphics(self, *args):
         self.usedText.size_hint = (0.8, 0.4)
-        self.usedText.pos_hint = {"x": 0.1, "y": 0.55}
+        self.usedText.pos_hint = {"x": 0.1, "y": 0.1}
 
         self.unusedText.size_hint = (0.8, 0.4)
-        self.unusedText.pos_hint = {"x": 0.1, "y": 0.1}
+        self.unusedText.pos_hint = {"x": 0.1, "y": 0.55}
 
         self.usedBg.pos = self.usedText.pos
         self.usedBg.size = self.usedText.size
@@ -168,9 +266,23 @@ class UploadMenu(FloatLayout):
         self.unusedBg.pos = self.unusedText.pos
         self.unusedBg.size = self.unusedText.size
 
+        self.trash.x = self.unusedText.right
+        self.trash.y = self.usedText.top
+
+        self.unusedLabel.pos = (
+            self.unusedText.x,
+            self.unusedText.top
+        )
+
+        self.usedLabel.pos = (
+            self.usedText.x,
+            self.usedText.top
+        )
+
+
         
 
-class CodesMenu(FloatLayout):
+class UploadMenu(FloatLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.size_hint = (1,1)
@@ -195,8 +307,36 @@ class CodesMenu(FloatLayout):
         self.submit_button.y = self.textinput.y-self.submit_button.height
         self.submit_button.bind(on_press=self.submitCodes)
 
+        self.lampent = Image(
+            source="Images/Lampent_illustration.png",
+            size_hint=(0.4, 0.3),
+            pos_hint={"x":0.15, "y":0.72},
+            allow_stretch=True,
+            keep_ratio=True
+        )
+
+        self.speech = Image(
+            source="Images/Speech_bubble.png",
+            size_hint=(0.35, 0.3),
+            pos_hint={"x":0.55, "y":0.72},
+            allow_stretch=True,
+            keep_ratio=True
+        )
+        
+        self.speechText = Label(
+            color=(0,0,0,1),
+            text="Submit new \ncodes here!",
+            size_hint=(0.4, 0.3),
+            pos_hint={"x":0.54, "y":0.74},
+            font_size=24
+        )
+
         self.add_widget(self.textinput)
         self.add_widget(self.submit_button)
+
+        self.add_widget(self.lampent)
+        self.add_widget(self.speech)
+        self.add_widget(self.speechText)
 
         self.bind(pos=self.update_graphics,
                   size=self.update_graphics)
@@ -229,24 +369,28 @@ class HomeMenu(FloatLayout):
         self.orientation = "vertical"
         self.spacing = 10
         self.index = 0
-        self.data = codes[self.index]
+        if len(codes) == 0:
+            self.index = 0
+            self.data = ["CODES DID NOT LOAD", 1]
+        else:
+            self.data = codes[self.index]
         self.border = None
 
         # QR image
         self.qr_image = QRButton()
         self.qr_image.size_hint = (0.8, 0.35)
+
         # Text label
-        
         self.qr_image.bind(on_press=lambda instance: self.chage_status())
 
         self.next_button = BoxButton(image_source="Images/icon_right_arrow.png")
         self.next_button.size_hint = (0.12, 0.06)
-        self.next_button.pos_hint = {"right": 0.9, "y": 0.25}
+        self.next_button.pos_hint = {"right": 0.9, "y": 0.35}
         self.next_button.bind(on_press=self.next_qr)
 
         self.back_button = BoxButton(image_source="Images/icon_left_arrow.png")
         self.back_button.size_hint = (0.12, 0.06)
-        self.back_button.pos_hint = {"x": 0.1, "y": 0.25}
+        self.back_button.pos_hint = {"x": 0.1, "y": 0.35}
         self.back_button.bind(on_press=self.prev_qr)
 
         self.code_label = Label(
@@ -254,6 +398,38 @@ class HomeMenu(FloatLayout):
             size_hint=(1, 0.10),
             color=(0, 0, 0, 1),
             font_size=24
+        )
+
+        self.lampent = Image(
+            source="Images/Lampent_illustration.png",
+            size_hint=(0.35, 0.25),
+            pos_hint={"x":0.15, "y":0.1},
+            allow_stretch=True,
+            keep_ratio=True
+        )
+
+        self.speech = Image(
+            source="Images/Speech_bubble.png",
+            size_hint=(0.35, 0.25),
+            pos_hint={"x":0.5, "y":0.1},
+            allow_stretch=True,
+            keep_ratio=True
+        )
+        
+        self.speechText = Label(
+            color=(0,0,0,1),
+            text="Thank you for \nattending the \nmeetup!",
+            size_hint=(0.35, 0.25),
+            pos_hint={"x":0.50, "y":0.12},
+            font_size=20
+        )
+
+        self.ca = Image(
+            source="Images/CA_logo.png",
+            size_hint=(0.50, 0.35),
+            pos_hint={"center_x":0.5,"y":0.72},
+            allow_stretch=True,
+            keep_ratio=True
         )
 
         self.code_label.center_y = self.next_button.center_y
@@ -275,6 +451,11 @@ class HomeMenu(FloatLayout):
         self.add_widget(self.code_label)
         self.add_widget(self.next_button)
         self.add_widget(self.back_button)
+
+        self.add_widget(self.lampent)
+        self.add_widget(self.speech)
+        self.add_widget(self.speechText)
+        self.add_widget(self.ca)
         
         self.bind(pos=self.update_graphics,
                   size=self.update_graphics)
@@ -291,10 +472,10 @@ class HomeMenu(FloatLayout):
 
     def update_graphics(self, *args):
         self.qr_image.size_hint = (0.8, 0.35)
-        self.qr_image.pos_hint = {"center_x": 0.5, "center_y": 0.5}
+        self.qr_image.pos_hint = {"center_x": 0.5, "center_y": 0.6}
 
-        self.back_button.pos_hint = {"x": 0.10, "y": 0.25}
-        self.next_button.pos_hint = {"right": 0.90, "y": 0.25}
+        self.back_button.pos_hint = {"x": 0.10, "y": 0.35}
+        self.next_button.pos_hint = {"right": 0.90, "y": 0.35}
 
         self.code_label.center_y = self.next_button.center_y
         self.code_label.center_x = self.width / 2
@@ -423,10 +604,10 @@ class overall_layout(FloatLayout):
             self.add_widget(HomeMenu(size=self.image.size))
             home_button.image.color = (0.5,0.5,0.5,1)
         elif state == 1:
-            self.add_widget(CodesMenu(size=self.image.size))
+            self.add_widget(UploadMenu(size=self.image.size))
             codes_button.image.color = (0.5,0.5,0.5,1)
         elif state == 2:
-            self.add_widget(UploadMenu(size=self.image.size))
+            self.add_widget(CodesMenu(size=self.image.size))
             upload_button.image.color = (0.5,0.5,0.5,1)
 
 
